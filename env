@@ -1,0 +1,8 @@
+#Ghost Configuration
+URL=http://blog.demoe.me
+
+# MariaDB configuration
+MYSQL_ROOT_PASSWORD=<REDACTED>
+MYSQL_USER=Eming
+MYSQL_PASSWORD=<REDACTED>
+MYSQL_DATABASE=blog

@@ -1,29 +1,34 @@
-version: '2'
-services:
-  blog:
-    build: ./blog
-    container_name: "demo-blog"
-    links:
-      - postgres
-    ports:
-      - "2368"
-  resume:
-    build: ./resume
-    container_name: "demo-resume"
-    links:
-        - postgres
-    ports:
-      - "8080"
-  postgres:
-    image: postgres
-    container_name: "demo-sql"
-  redis:
-    image: redis
-    container_name: "demo-nosql"
-    ports:
-      - "6379"
-    links:
-        - postgres
-  nginx:
-    image: nginx
-    container_name: "demo-proxy"
+data:
+  build: ./data
+  container_name: "my-data"
+blog:
+  image: ghost
+  container_name: "my-blog"
+  volumes:
+    - ./blog/config.js:/var/lib/ghost/config.js
+  env_file:
+    - ./env
+  links:
+    - mariadb:mysql
+  volumes_from:
+    - data
+mariadb:
+  image: mariadb
+  container_name: "my-sql"
+  env_file:
+    - ./env
+  ports:
+    - "3306:3306"
+  environment:
+    - TERM=xterm
+  volumes_from:
+    - data
+nginx:
+  image: jwilder/nginx-proxy
+  container_name: "my-proxy"
+  ports:
+    - "80:80"
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+  environment:
+    - VIRTUAL_HOST=blog.demoe.me

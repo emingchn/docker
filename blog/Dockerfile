@@ -1,6 +1,8 @@
 # Base image
 FROM ghost
 
+MAINTAINER Yiming Cheng <emingchn@gmail.com>
+
 # Install Gulp and Bower
 RUN npm install -g gulp && npm install -g bower
 

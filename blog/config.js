@@ -1,146 +1,80 @@
-// # Ghost Configuration
-// Setup your Ghost install for various [environments](http://support.ghost.org/config/#about-environments).
+console.log('Starting Ghost using dynamic config... :)')
 
-// Ghost runs in `development` mode by default. Full documentation can be found at http://support.ghost.org/config/
+var config,
+    url = require('url'),
+    path = require('path');
 
-var path = require('path'),
-    config;
+function getDatabase() {
+  var db_config = {};
+  // If we've linked in a mysql container, then this environment variable should be set
+  if (process.env['MYSQL_NAME']) {
+    db_config['client'] = 'mysql';
+  } else {
+    return {
+      client: 'sqlite3',
+      connection: {
+        filename: path.join(process.env.GHOST_CONTENT, '/data/ghost.db')
+      },
+      debug: false
+    };
+  }
+  var db_uri = /^tcp:\/\/([\d.]+):(\d+)$/.exec(process.env['DB_PORT']);
+  if (db_uri) {
+    db_config['connection'] = {
+      host: db_uri[1],
+      port: db_uri[2]
+    };
+  } else {
+    db_config['connection'] = {
+      host: process.env['DB_HOST'] || 'mysql',
+      port: process.env['DB_PORT'] || '3306'
+    };
+  }
+  if (process.env['MYSQL_ENV_MYSQL_USER']) db_config['connection']['user'] = process.env['MYSQL_ENV_MYSQL_USER'];
+  if (process.env['MYSQL_ENV_MYSQL_PASSWORD']) db_config['connection']['password'] = process.env['MYSQL_ENV_MYSQL_PASSWORD'];
+  if (process.env['MYSQL_ENV_MYSQL_DATABASE']) db_config['connection']['database'] = process.env['MYSQL_ENV_MYSQL_DATABASE'];
+  return db_config;
+}
+
+function getMailConfig() {
+  var mail_config = {}
+  mail_config['options'] = {};
+  mail_config['options']['auth'] = {};
+  if (process.env['MAIL_TRANSPORT']){ mail_config['transport'] = process.env['MAIL_TRANSPORT'] };
+  if (process.env['MAIL_SERVICE']) { mail_config['options']['service']   = process.env['MAIL_SERVICE'] }
+  if (process.env['MAIL_USER']) { mail_config['options']['auth']['user'] = process.env['MAIL_USER'] }
+  if (process.env['MAIL_PASS']) { mail_config['options']['auth']['pass'] = process.env['MAIL_PASS'] }
+  return mail_config;
+}
+if (!process.env.URL) {
+  console.log("Please set URL environment variable to your blog's URL");
+  process.exit(1);
+}
 
 config = {
-    // ### Production
-    // When running Ghost in the wild, use the production environment.
-    // Configure your URL and mail settings here
-    production: {
-        url: 'http://blog.demoe.me',
-        mail: {},
-        database: {
-            client: 'postgres',
-            connection: {
-                filename: path.join(__dirname, '/content/data/ghost.db')
-            },
-            debug: false
-        },
-
-        server: {
-            host: '127.0.0.1',
-            port: '2368'
-        }
+  production: {
+    url: process.env.URL,
+    database: getDatabase(),
+    mail: getMailConfig(),
+    server: {
+      host: '0.0.0.0',
+      port: '2368'
     },
-
-    // ### Development **(default)**
-    development: {
-        // The url to use when providing links to the site, E.g. in RSS and email.
-        // Change this to your Ghost blog's published URL.
-        url: 'http://localhost:2368',
-
-        // Example mail config
-        // Visit http://support.ghost.org/mail for instructions
-        // ```
-        //  mail: {
-        //      transport: 'SMTP',
-        //      options: {
-        //          service: 'Mailgun',
-        //          auth: {
-        //              user: '', // mailgun username
-        //              pass: ''  // mailgun password
-        //          }
-        //      }
-        //  },
-        // ```
-
-        // #### Database
-        // Ghost supports sqlite3 (default), MySQL & PostgreSQL
-        database: {
-            client: 'postgres',
-            connection: {
-                filename: path.join(__dirname, '/content/data/ghost-dev.db')
-            },
-            debug: false
-        },
-        // #### Server
-        // Can be host & port (default), or socket
-        server: {
-            // Host to be passed to node's `net.Server#listen()`
-            host: '127.0.0.1',
-            // Port to be passed to node's `net.Server#listen()`, for iisnode set this to `process.env.PORT`
-            port: '2368'
-        },
-        // #### Paths
-        // Specify where your content directory lives
-        paths: {
-            contentPath: path.join(__dirname, '/content/')
-        }
-    },
-
-    // **Developers only need to edit below here**
-
-    // ### Testing
-    // Used when developing Ghost to run tests and check the health of Ghost
-    // Uses a different port number
-    testing: {
-        url: 'http://127.0.0.1:2369',
-        database: {
-            client: 'sqlite3',
-            connection: {
-                filename: path.join(__dirname, '/content/data/ghost-test.db')
-            },
-            pool: {
-                afterCreate: function (conn, done) {
-                    conn.run('PRAGMA synchronous=OFF;' +
-                    'PRAGMA journal_mode=MEMORY;' +
-                    'PRAGMA locking_mode=EXCLUSIVE;' +
-                    'BEGIN EXCLUSIVE; COMMIT;', done);
-                }
-            }
-        },
-        server: {
-            host: '127.0.0.1',
-            port: '2369'
-        },
-        logging: false
-    },
-
-    // ### Testing MySQL
-    // Used by Travis - Automated testing run through GitHub
-    'testing-mysql': {
-        url: 'http://127.0.0.1:2369',
-        database: {
-            client: 'mysql',
-            connection: {
-                host     : '127.0.0.1',
-                user     : 'root',
-                password : '',
-                database : 'ghost_testing',
-                charset  : 'utf8'
-            }
-        },
-        server: {
-            host: '127.0.0.1',
-            port: '2369'
-        },
-        logging: false
-    },
-
-    // ### Testing pg
-    // Used by Travis - Automated testing run through GitHub
-    'testing-pg': {
-        url: 'http://127.0.0.1:2369',
-        database: {
-            client: 'pg',
-            connection: {
-                host     : '127.0.0.1',
-                user     : 'postgres',
-                password : '',
-                database : 'ghost_testing',
-                charset  : 'utf8'
-            }
-        },
-        server: {
-            host: '127.0.0.1',
-            port: '2369'
-        },
-        logging: false
+    paths: {
+      contentPath: path.join(process.env.GHOST_CONTENT, '/')
     }
+  },
+  development: {
+    url: process.env.URL + ".dev",
+    database: getDatabase(),
+    mail: getMailConfig(),
+    server: {
+      host: '0.0.0.0',
+      port: '2368'
+    },
+    paths: {
+      contentPath: path.join(process.env.GHOST_CONTENT, '/')
+    }
+  },
 };
-
 module.exports = config;
